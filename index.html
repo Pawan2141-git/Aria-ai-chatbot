@@ -1347,7 +1347,8 @@
             <div class="input-section">
                 <div class="input-wrapper">
                     <div class="input-controls">
-                        <button class="input-control" title="Attach File">
+                        <input type="file" id="fileInput" style="display: none;" accept=".txt,.pdf,.doc,.docx,.jpg,.png,.gif" multiple>
+                        <button class="input-control" id="fileUploadBtn" title="Attach File" onclick="document.getElementById('fileInput').click()">
                             <i class="fas fa-paperclip"></i>
                         </button>
                         <button class="input-control voice-btn" id="voiceInputBtn" title="Voice Input" onclick="toggleVoiceRecognition()">
@@ -1406,6 +1407,7 @@
 
         let isFirstMessage = true;
         let conversationHistory = [];
+        let uploadedFiles = [];
 
         // Ultimate API Integration
         async function callGeminiAPI(message) {
@@ -2003,8 +2005,51 @@
         sendButton.addEventListener('click', sendMessage);
 
         // Ultimate Initialization
+        // File Upload Handler
+        function initFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            fileInput.addEventListener('change', handleFileUpload);
+        }
+        
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            if (files.length === 0) return;
+            
+            Array.from(files).forEach(file => {
+                console.log('File uploaded:', file.name);
+                addMessage(`📎 File uploaded: ${file.name} (${(file.size/1024).toFixed(1)} KB)`, true);
+                
+                if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
+                    readTextFile(file);
+                } else if (file.type.startsWith('image/')) {
+                    addMessage(`🖼️ Image uploaded: ${file.name}. I can help analyze this image.`);
+                } else {
+                    addMessage(`✅ File "${file.name}" uploaded successfully. How can I help you with this file?`);
+                }
+                
+                uploadedFiles.push({name: file.name, type: file.type, size: file.size});
+            });
+            
+            event.target.value = '';
+        }
+        
+        function readTextFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const preview = content.length > 200 ? content.substring(0, 200) + '...' : content;
+                addMessage(`📄 Text file content:\n\n${preview}\n\nFile read successfully! How can I help analyze this content?`);
+                
+                if (PREMIUM_FEATURES.AUTO_SPEAK) {
+                    speakText(`Text file ${file.name} has been read successfully.`);
+                }
+            };
+            reader.readAsText(file);
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
             initCapabilityCards();
+            initFileUpload();
             createUltimateParticles();
             initVoiceRecognition();
             messageInput.focus();
